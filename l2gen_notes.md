@@ -3,6 +3,11 @@
 time mpirun -n 1 src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_test_compress.txt
 ```
 
+```
+export OMP_NUM_THREADS=128;time mpirun -n 1 src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_test_uncompressed.txt | tee test_uncompressed_output.txt
+```
+
+
 
 # Param file
 The param file contains the configuration of the l2gen run. The default file can be found in 
