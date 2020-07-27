@@ -1,3 +1,10 @@
+# Compiling l2gen
+All programs in the comap github must be compiled by the Makefile in the main directory. Compile l2gen (and quiet, which it needs), as
+```
+make libquiet l2gen
+```
+Make sure to have enabled a bunch of commandline options and modules (see ~/.bashrc)
+
 # Running l2gen
 ```
 time mpirun -n 1 src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_test_compress.txt
@@ -7,6 +14,24 @@ time mpirun -n 1 src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param
 export OMP_NUM_THREADS=128;time mpirun -n 1 src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_test_uncompressed.txt | tee test_uncompressed_output.txt
 ```
 
+```
+export OMP_NUM_THREADS=16;time mpirun -n 8 comap/src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_jonas_all_co7.txt | tee /mn/stornext/d16/cmbco/comap/jonas/l2gen_co7_log.txt
+```
+
+One can specify MPI to run on multiple machines, as:
+```
+export OMP_NUM_THREADS=16;time mpirun -env I_MPI_FABRICS ofi -machine machinefile.txt -n 24 comap/src/f90/l2gen/l2gen /mn/stornext/d16/cmbco/comap/protodir/param_jonas_all_co7.txt 2>&1| tee /mn/stornext/d16/cmbco/comap/jonas/l2gen_co7_log.txt
+```
+-n 24 now specifies the combined number of cores over all machines. The file machinefile.txt should look like:
+```
+owl18:4
+owl19:4
+owl20:4
+owl21:4
+owl22:4
+owl23:4
+```
+where 4 specifies the number of cores on that machine.
 
 
 # Param file
@@ -45,4 +70,6 @@ jupiter   199
 
 # L2 files
 The final location of the l2 files are specified in the param file, and should be a folder in
+```
 /mn/stornext/d16/cmbco/comap/protodir/level2
+```
