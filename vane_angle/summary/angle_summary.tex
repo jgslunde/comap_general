@@ -24,13 +24,13 @@
 %\usepackage{natbib}
 %\bibliographystyle{dinat}
 \usepackage[makeroom]{cancel}
-\usepackage[margin=2.0cm]{geometry}
+\usepackage[margin=1.4cm]{geometry}
 \usepackage{pdfpages}
 \usepackage[margin=10pt, textfont={small, it}, labelfont={bf}, labelsep=endash]{caption}
 \renewcommand{\baselinestretch}{1}
 
 \begin{document}
-\title{COMAP - Vane angle vs TOD}
+\title{COMAP - Vane angle analysis}
 \author{
     \begin{tabular}{r l}
         Jonas Gahr Sturtzel Lunde & (\texttt{jonassl@astro.uio.no})
@@ -41,89 +41,149 @@ Relevant code found at \url{https://github.com/jgslunde/comap_general/tree/maste
 \vspace{0.7cm}
 
 
-\begin{figure}[h!]
+\renewcommand{\abstractname}{Summary}\begin{abstract}
+    \noindent
+    This write-up summarizes an effort to analyze the behavior and relation of the COMAP telescope feedhorn array and the angle of the calibration vane, with the goal of finding a suitable "safe" threshold angle of the vane for a successful $T_{sys}$ measurements. By interpolating the spectrometer TOD power data onto the vane angle data, we study the relation between two. We find that the interpolation produces inconsistent results, which can only be explained by an erroneous offset in the timestamps reported by the spectrometer. This offset was found to be a delay of $\sim 0.6$ seconds. Correcting for this delay, we find that a threshold angle of $68$ degrees is sufficient for good $T_{sys}$ measurements, as the power in feeds 8 and 10 falls by $1\%$ already at an angle of $68.88$ degrees. Lastly, we found that the minimum angle obtainable by the calibration vane suddenly increased from an average of $65.5$ to $66.1$, together with a much larger spread i values from obsid to obsid. This transition happened sometime around MJD $58830$ (2019-12-13).
+\end{abstract}
+
+
+
+
+\section{Introduction}
+The $T_{sys}$ calibration of the telescope involves tilting a calibration vane across the telescope receiver. As each of the 19 feedhorns i the receiver array gets gradually covered, their TOD power will spike. The placement of the vane is defined by an angle, which takes a value of $\sim 220$ degrees when idle, and $\sim 66$ degrees when completely covering the array.
+
+A good $T_{sys}$ measurement requires confidence that all feeds are comfortably covered by the vane. Due to the physical layout of the feedhorns, we expect their spikes in power to come at different vane angles. The goal of this writeup is to identify at what vane angle a $T_{sys}$ measurement can be made with confidence.
+
+
+\section{Implementation}
+We will be using the TOD power data found in the \texttt{/spectrometer/tod} dataset of the level1 files, combined with the timestamps in \texttt{/spectrometer/MJD}. The vane angles are found in \texttt{/hk/antenna0/vane/angle}, coupled with the timestamps from \texttt{/hk/antenna0/vane/utc}. Finally, the information about the state of the array (like "doing $T_{sys}$ calibration") is found in \texttt{/hk/array/frame/features}, together with timestamps in \texttt{/hk/array/frame/utc}. We will in practice assume that the antenna0 and array timestamps are identical (which turns out to be true within an acceptable margin). Any slight offset doesn't really matter, as it is the angle which gets us the final results, and the array state is simply used to discards parts of the dataset where no $T_{sys}$ measurements are taken.
+
+
+\section{First look}
+Figure \ref{fig:tod_angle} shows four randomly selected $T_{sys}$ measurement, gathered from level1 files. We can see the vane angle decreases to $\sim 66$, and the power in all feeds spike as the angle approaches its minimum, although at slightly different times for each feed, as expected.
+
+\subsection{Time offset problem}
+A worrisome observation is that the the spike in power does not appear completely symmetric with the fall in vane angle. One would expect the power of each feed to be unique for any given vane angle. In other words, we would expect the power to be the same value as the vane passes, say, 100 degrees, independently of whether this angle appears while its descending or ascending. This does not appear to be the case, and the TOD power seems to be lagging slightly behind the vane angles.
+
+Figure \ref{fig:tod_angle_scatter} shows this problem even more clearly. Here, all available vane angles for $T_{sys}$ measurements of 2019-07 through 2020-06 are gathered, with TOD power interpolated onto the reported vane angle timestamps. What we expect is a single logistic-looking curve, with power $1$ at very low angles, power $\sim 0$ at very high angles, and a transition in between, with gradually increasing power. Instead we get two such curves. 
+
+\begin{figure}[H]
     \centering
-    \includegraphics[scale=0.6]{../tod_angle.png}
-    \caption{Normalized TOD power (thin lines) for a handful of feeds of a single level 1 file, together with vane angle (black dots) over a Tsys measurements. The TOD/angle relation should be completely symmetric in time, but a light offset can be seen (the TOD is seemingly lagging behind the vane angle). Another (expected) observed effect is the different widths of feeds TOD top hat, due to their differing physical placements on the feed array.}
+    \includegraphics[scale=0.34]{../plots/tod_angle_0008909-2019-11-07-085207.png}
+    \includegraphics[scale=0.34]{../plots/tod_angle_0014085-2020-06-09-002710.png}
+    \includegraphics[scale=0.34]{../plots/tod_angle_0008853-2019-11-04-18280.png}
+    \includegraphics[scale=0.34]{../plots/tod_angle_0012113-2020-03-24-181642.png}
+    \caption{Normalized TOD power (thin lines) for a handful of feeds of four random level 1 files, together with vane angle (black dots) for four Tsys measurements. The TOD/angle relation should be completely symmetric in time, but a light offset can be seen (the TOD is seemingly lagging behind the vane angle). Another (expected) observed effect is the different widths of each feeds TOD power curve, due to their differing physical placements on the feed array.}
     \label{fig:tod_angle}
 \end{figure}
 
-
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
-    \includegraphics[scale=0.6]{../power_angle_single.png}
-    \caption{Same setup as \ref{fig:tod_angle}. Normalized TOD power interpolated on and plotted against vane angle.}
-    \label{fig:power_angle_single}
+    \includegraphics[scale=0.6]{../plots/power_angle_all_0.png}
+    \caption{Normalized TOD vs vane angle for feed 1. Each dot represents a single reported vane angle, with a TOD power interpolated onto it. The plot contains all functional level 1 files for 12 months. We would expect the TOD/vane relation to be consistent between "vane descending" and "vane ascending", but we see two very distinct TOD/angle curves. This again strongly hints at an offset between the TOD and angle timestamps.}
+    \label{fig:tod_angle_scatter}
 \end{figure}
 
 
+
+\subsection{Temporary solution to time offset problem}
+Since we know what we want the power/angle curve to look like, the solution was simply to offset the timestamps reported by the spectrometer until the curves fell on top of each other. Some trail and error produced the curve seen in \ref{fig:tod_angle_scatter_offset}, which is how we expect it too look. This required an offset of $7\times 10^{-6}\,\si{MJD} \approx \SI{0.6}{s}$.
+
+To get an idea of the size of this offset compared to the different time intervals used by the telescope, figure \ref{fig:time} shows the 0.6 offset against the first 10 and 1 seconds (top and bottom) of timestamps from the spectrometer, antenna0, and array. The offset is slightly longer than a single timestamp in the antenna or array, which both have timesteps of $\sim 0.5$ seconds, while being significantly longer than a timestamp in the spectrometer. Since it is the spectrometer which lags behind, it is interesting to see that the offset is instead of the order of magnitude of the antenna and array.
+
+Another observation is the fact that the timestamps don't start at the exact same time. As a matter of fact, the antennas first timestamp is a fraction of a second behind the first spectrometer timestep, and the first array timestep is almost 0.5 seconds behind. It is unclear to me why the antenna and array timestamps line up so poorly, especially considering they seem to contain cross-relevant information (the vane "state", e.g. "doing a Tsys measurements" is in the array container, while the actual angles lie in the anteanna0 container).
+
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.6]{../power_angle_all_0.png}
-    \caption{Same type of plot as \ref{fig:power_angle_single}, but with 12 months of feed 1 obsids. We would expect the TOD/vane relation to be consistent between "vane descending" and "vane ascending", but we see two very distinct TOD/angle curves. This again strongly hints at an offset between the TOD and angle timestamps.}
-    \label{}
-\end{figure}
-
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[scale=0.6]{../power_angle_all_7e-6.png}
+    \includegraphics[scale=0.6]{../plots/power_angle_all_7e-6.png}
     \caption{Introducing an offset of 7e-6 MJD (0.6 seconds) solves the problem, and gives us the plot like we expect it to look.}
-    \label{}
+    \label{fig:tod_angle_scatter_offset}
 \end{figure}
 
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.6]{../power_angle_all_feed8_7e-6.png}
-    \caption{Same plot as above, but with feed 8, which is the farthest from the calibration vane, and therefore has the "worst" TOD/angle relation. We see that maximum power isn't reached until the vane as descended to at least 70 degrees.}
-    \label{}
-\end{figure}
-
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[scale=0.6]{../times_20.png}
-    \includegraphics[scale=0.6]{../times_2.png}
+    \includegraphics[scale=0.5]{../plots/times_20.png}
+    \includegraphics[scale=0.5]{../plots/times_2.png}
     \caption{Plots showing the first 10 (above) and 1 (below) seconds of time stamps of the TOD, vane, and array. The offset we had to be introduced to get consistent results in previous plots is also shown, as a black line.}
-    \label{}
+    \label{fig:time}
 \end{figure}
 
+
+
+
+\pagebreak
+\section{Finding optimal angle}
+\subsection{Overview}
+Equipped with our improvised solution to the time offset problem, we can get back to actually estimating the optimal vane angle for good $T_{sys}$ measurements. Expanding on figure \ref{fig:tod_angle_scatter_offset}, the same 12-month data was binned in 0.25 degree bins (using simply the average value) for each feed, and plotted in figure \ref{fig:binned_all}. As we can see, there is a huge difference in at what angle different feeds lose power. The three "worst" feeds are wihtout a doubt feed 8 and 10, with 9 right behind. This is due to their physical placement furthest away from the calibration vane. Figure \ref{fig:layout} shows at what angle each feed falls in power by $2.5\%$, depending on their physical placement. 
+
+\vspace{1cm}
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.5]{../binned_all.png}
+    \includegraphics[scale=0.4]{../plots/binned_all.png}
     \caption{Scatter plot showing the power/angle relation of the calibration vane for all feeds, binned to 0.25 degrees. 12 months of level 1 files, from 2019-07 through 2020-06 was used.}
-    \label{}
+    \label{fig:binned_all}
 \end{figure}
 
+
+\vspace{1cm}
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.54]{../vane_nums1.png}
-    \includegraphics[scale=0.44]{../vane_nums2.png}
+    \includegraphics[scale=0.5]{../plots/vane_nums1.png}
+    \includegraphics[scale=0.4]{../plots/vane_nums2.png}
     \caption{Angles for which the different feeds pass below the 97.5\% power threshhold, ordered after their physical placement on the array.}
-    \label{}
+    \label{fig:layout}
 \end{figure}
 
 
+\pagebreak
+
+
+\subsection{Analysis of feed 8 and 10}
+The two worst feeds (meaning the last to gain power when the calibration vane decreases in angle) are feeds 8 and 10. We will therefore use these two as a baseline when picking an optimal angle for $T_{sys}$ measurements. Figure \ref{fig:8and10} shows a zoomed in version of figure \ref{fig:binned_all} on the two feeds. Markers at $1\%$ and $2\%$ fall in power, and errorbars, are also included. As we can see, both feeds have lost $1\%$ power at $66.88$ degrees. It does appear that the power starts decreasing every so slightly from about $68$ degrees and onward.
+
+This view is further supported up by figure \ref{fig:8and10_diff}, which shows the difference between each bin and the former. If these points are consistently below zero, we have a negative derivative, and a systematic decrease in power. The points are comfortably close to zero all the way to somewhere around $68$ - $68.5$ degrees, at which point they not only start decreasing, but also contain a much larger spread. 
+
+
+\vspace{1cm}
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.45]{../binned8.png}
-    \includegraphics[scale=0.45]{../binned9.png}
-    \includegraphics[scale=0.45]{../binned10.png}
+    \includegraphics[scale=0.36]{../plots/binned8.png}
+    \includegraphics[scale=0.36]{../plots/binned10.png}
     \caption{Scatter plot showing the power/angle relation of the calibration vane for the three "worst" feeds, binned to 0.25 degrees. Error bars show $\sigma(x)/\sqrt{N}$, magnified by a power of 10, for clarity.}
-    \label{}
+    \label{fig:8and10}
 \end{figure}
 
-
+\vspace{1cm}
 \begin{figure}[h!]
     \centering
-    \includegraphics[scale=0.45]{../binned_diff8.png}
-    \includegraphics[scale=0.45]{../binned_diff9.png}
-    \includegraphics[scale=0.45]{../binned_diff10.png}
+    \includegraphics[scale=0.37]{../plots/binned_diff8.png}
+    \includegraphics[scale=0.37]{../plots/binned_diff10.png}
     \caption{Difference from previous bin in 0.25 degree binned power/angle relation.}
-    \label{}
+    \label{fig:8and10_diff}
 \end{figure}
 
+
+\section{Angle drift}
+As the cutoff angle seems to be in the neighborhood of 68 degrees, and the minimum angle obtained during a $T_{sys}$ measurement just barely passes this by a couple of degrees, it worthwhile looking into if the minimum angle obtained has changed over time. If it's drifting closer to 68 degrees over time, it would be a big problem.
+
+Figure \ref{fig:angle_drift} contains the minimum obtained by each individual obsid over the 12 month span, categorized by month (left) and continually in time (right). The mean of each month, and a running gaussian window function, is also shown in each plot. While the plots doesn't point to a general drift, there instead seems to have been a transition where the average angle suddenly increased by $\sim 0.6$ degrees, from $65.5$ to $66.1$. This transition happens around MJD $58830$, which is around the 13th of December, 2019 (plus/minus a week or so).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.36]{../plots/angle_minima.png}
+    \includegraphics[scale=0.36]{../plots/angle_minima_datetime.png}
+    \caption{}
+    \label{fig:angle_drift}
+\end{figure}
+
+
+\section{Conclusion}
+An inconsistency between the timestamps of the spectrometer and timestamps of feed array was found. The offset strongly suggests a 0.6 second delay in the reported timestamp values of the spectrometer (or the feed array timestamps being 0.6 seconds ahead of time).
+
+Accounting for this offset, feeds 8 and 10 were found to be the most sensitive to the calibration vane angle, and lose power the fastest as the angle increases. They both lost $1\%$ power as the vane increased to an angle of $68.88$ degrees, and a cutoff angle of $68$ degrees is recommended for any $T_{sys}$ measurement, to ensure that all feeds are sufficiently covered by the array.
+
+There was also observed a sudden increase in the minimum angle obtainable by the calibration vane sometime in the months of November or December of 2019. The minimum obtainable angle suddenly increased from $\sim 65.5$ degrees to $\sim 66.1$ degrees. There did however not appear to be any continuous angle drift in time.
 
 
 \end{document}
