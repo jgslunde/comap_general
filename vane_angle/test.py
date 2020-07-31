@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-path = "../pathfinder/ovro/2020-04/"
+path = "../../../pathfinder/ovro/2020-04/"
 filename1 = "comp_comap-0012507-2020-04-07-162941.hd5"
 filename2 = "comp_comap-0012556-2020-04-09-102442.hd5"
 
@@ -18,9 +18,12 @@ vane_angles    = np.array(f["/hk/antenna0/vane/angle"])/100.0  # Degrees
 vane_time      = np.array(f["/hk/antenna0/vane/utc"])
 array_features = np.array(f["/hk/array/frame/features"])
 array_time     = np.array(f["/hk/array/frame/utc"])
+feeds =        np.array(f["/spectrometer/feeds"])
 vane_active    = array_features&(2**13) != 0
 print("timestep size = ", vane_time[1] - vane_time[0])
 print("vane/array time offset = ", (vane_time[0] - array_time[0]))
+
+print(feeds)
 
 print(tod_time[0]*3600*24, vane_time[0]*3600*24)
 
