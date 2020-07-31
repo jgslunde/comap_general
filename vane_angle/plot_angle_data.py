@@ -5,19 +5,18 @@ from scipy.interpolate import interp1d
 import os
 from tqdm import tqdm
 
-data = np.load("angles_7e6.npy")
+data = np.load("angles_0.npy")
 
 print(data.shape)
 
-feed = 8
+feed = 1
 
-plt.scatter(data[0], data[feed], s=2)
-plt.axvline(x=70, c="y", ls="--", label="angle threshold = ca 70 deg.")
-plt.legend()
+plt.scatter(data[0], data[feed], s=0.01)
 plt.xlabel("Vane angle [Degrees]")
 plt.ylabel("Normalized TOD")
-plt.title("All of 2020-04 | Feed 8 | Offset = 7e-6 MJD")
+# plt.xlim(60, 220)
+plt.title("2019-07 - 2020-06 | Feed 1 | Offset = 0 MJD")
 plt.tight_layout()
-plt.savefig("power_angle_all_feed8_7e-6.png", bbox_inches="tight")
+plt.savefig("power_angle_all_0.png", bbox_inches="tight")
 plt.close()
 plt.clf()
