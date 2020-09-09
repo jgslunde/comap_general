@@ -2,7 +2,6 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from tqdm import trange
 import time
 import ctypes
 
@@ -69,7 +68,7 @@ class TsysMeasure:
                 tod_start_idx = np.argmin(np.abs(vane_timei[0]-tod_times))
                 tod_stop_idx = np.argmin(np.abs(vane_timei[-1]-tod_times))
                 self.calib_indices_tod[i, :] = tod_start_idx, tod_stop_idx
-                for feed_idx in trange(nfeeds):
+                for feed_idx in range(nfeeds):
                     todi = tod[feed_idx, :, :, tod_start_idx:tod_stop_idx]
                     tod_timesi = tod_times[tod_start_idx:tod_stop_idx]
                     tod_freq_mean = np.nanmean(todi, axis=(0,1))
@@ -118,6 +117,7 @@ if __name__ == "__main__":
     np.save("tsys_"+obsid+".npy", Tsys.Tsys)
     np.save("thot_"+obsid+".npy", Tsys.Thot)
     np.save("thot_cont_"+obsid+".npy", Tsys.Thot_cont)
+    np.save("phot_t_"+obsid+".npy", Tsys.Phot_t)
     np.save("phot_"+obsid+".npy", Tsys.Phot)
     np.save("pcold_"+obsid+".npy", Tsys.Pcold)
     np.save("points_used_"+obsid+".npy", Tsys.points_used)
