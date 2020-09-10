@@ -33,8 +33,8 @@ class TsysMeasure:
         self.Phot[:] = np.nan  # All failed calcuations of Tsys should result in a nan, not a zero.
         self.Phot_t[:] = np.nan
 
-        self.points_used_Phot = np.ones((self.nfeeds))
-        self.points_used_Thot = np.ones((self.nfeeds))
+        self.points_used_Phot = np.ones((self.nfeeds, 2))
+        self.points_used_Thot = np.ones((self.nfeeds, 2))
         self.calib_indices_tod = np.ones((2, 2), dtype=np.int)  # Start and end indices, in tod_time format, for "calibration phase".
         #self.tsys_calc_times = np.ones((self.nfeeds, 2, 2))
 
@@ -80,8 +80,8 @@ class TsysMeasure:
                             self.Thot[feed_idx, i] = np.nanmean(self.Thot_cont[min_idx_vane:max_idx_vane])
                             self.Phot[feed_idx, :, :, i] = np.nanmean(todi[:,:,min_idxi:max_idxi], axis=(2))
                             self.Phot_t[feed_idx, i] = (tod_timesi[min_idxi] + tod_timesi[max_idxi])/2.0
-                            self.points_used_Phot[feed_idx] = max_idxi - min_idxi
-                            self.points_used_Thot[feed_idx] = max_idx_vane - min_idx_vane
+                            self.points_used_Phot[feed_idx, i] = max_idxi - min_idxi
+                            self.points_used_Thot[feed_idx, i] = max_idx_vane - min_idx_vane
 
     def Tsys_of_t(self, t, tod):
         self.Tsys = np.ones((self.nfeeds, self.nbands, self.nfreqs, self.ntod), dtype=np.float32)
