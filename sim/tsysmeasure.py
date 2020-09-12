@@ -1,3 +1,5 @@
+# Run as
+# export OMP_NUM_THREADS=18; python3 tsysmeasure.py
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -6,10 +8,15 @@ import time
 import ctypes
 
 class TsysMeasure:
+    verbose = True
+
     def __init__(self):
         pass
 
     def load_data_from_arrays(self, vane_angles, vane_times, array_features, T_hot, tod, tod_times):
+        if self.verbose:
+            print("Starting arrayload")
+            t0 = time.time()
         self.vane_angles = vane_angles
         self.vane_times = vane_times
         self.array_features = array_features
@@ -27,21 +34,26 @@ class TsysMeasure:
 
         self.tod = tod.astype(dtype=np.float32, copy=False)
 
-        self.Thot = np.ones((self.nfeeds, 2), dtype=np.float64)
-        self.Phot = np.ones((self.nfeeds, self.nbands, self.nfreqs, 2), dtype=np.float64)  # P_hot measurements from beginning and end of obsid.
-        self.Phot_t = np.ones((self.nfeeds, 2), dtype=np.float64)
+        self.Thot = np.zeros((self.nfeeds, 2), dtype=np.float64)
+        self.Phot = np.zeros((self.nfeeds, self.nbands, self.nfreqs, 2), dtype=np.float64)  # P_hot measurements from beginning and end of obsid.
+        self.Phot_t = np.zeros((self.nfeeds, 2), dtype=np.float64)
         self.Phot[:] = np.nan  # All failed calcuations of Tsys should result in a nan, not a zero.
         self.Phot_t[:] = np.nan
 
-        self.points_used_Phot = np.ones((self.nfeeds, 2))
-        self.points_used_Thot = np.ones((self.nfeeds, 2))
-        self.calib_indices_tod = np.ones((2, 2), dtype=np.int)  # Start and end indices, in tod_time format, for "calibration phase".
-        #self.tsys_calc_times = np.ones((self.nfeeds, 2, 2))
+        self.points_used_Phot = np.zeros((self.nfeeds, 2))
+        self.points_used_Thot = np.zeros((self.nfeeds, 2))
+        self.calib_indices_tod = np.zeros((2, 2), dtype=np.int)  # Start and end indices, in tod_time format, for "calibration phase".
+        #self.tsys_calc_times = np.zeros((self.nfeeds, 2, 2))
 
         self.TCMB = 2.725
+        if self.verbose:
+            print("Finished arrayload in %.2f s" % (time.time()-t0))
 
 
     def load_data_from_file(self, filename):
+        if self.verbose:
+            print("Starting fileread")
+            t0 = time.time()
         f = h5py.File(filename, "r")
         vane_angles    = f["/hk/antenna0/vane/angle"][()]/100.0  # Degrees
         vane_times     = f["/hk/antenna0/vane/utc"][()]
@@ -53,10 +65,15 @@ class TsysMeasure:
             T_hot      = f["/hk/antenna0/vane/Tvane"][()]
         else:
             T_hot      = f["/hk/antenna0/env/ambientLoadTemp"][()]
+        if self.verbose:
+            print("Finished fileread in %.2f s" % (time.time()-t0))
         self.load_data_from_arrays(vane_angles, vane_times, array_features, T_hot, tod, tod_times)
 
 
     def solve(self):
+        if self.verbose:
+            print("Starting Phot solve")
+            t0 = time.time()        
         ### Step 1: Calculate P_hot at the start and end Tsys measurement points. ###
         vane_time1, vane_time2, vane_active1, vane_active2, tod, tod_times = self.vane_time1, self.vane_time2, self.vane_active1, self.vane_active2, self.tod, self.tod_times
         nfeeds, nbands, nfreqs, ntod = self.nfeeds, self.nbands, self.nfreqs, self.ntod
@@ -82,9 +99,14 @@ class TsysMeasure:
                             self.Phot_t[feed_idx, i] = (tod_timesi[min_idxi] + tod_timesi[max_idxi])/2.0
                             self.points_used_Phot[feed_idx, i] = max_idxi - min_idxi
                             self.points_used_Thot[feed_idx, i] = max_idx_vane - min_idx_vane
+        if self.verbose:
+            print("Finished Phot solve in %.2f s" % (time.time()-t0))
 
     def Tsys_of_t(self, t, tod):
-        self.Tsys = np.ones((self.nfeeds, self.nbands, self.nfreqs, self.ntod), dtype=np.float32)
+        if self.verbose:
+            print("Starting Tsys solve")
+            t0 = time.time()      
+        self.Tsys = np.zeros((self.nfeeds, self.nbands, self.nfreqs, self.ntod), dtype=np.float32)
         tsyslib = ctypes.cdll.LoadLibrary("/mn/stornext/d16/cmbco/comap/jonas/comap_general/sim/tsyslib.so.1")
         float64_array1 = np.ctypeslib.ndpointer(dtype=ctypes.c_double, ndim=1, flags="contiguous")
         float32_array4 = np.ctypeslib.ndpointer(dtype=ctypes.c_float, ndim=4, flags="contiguous")
@@ -98,6 +120,8 @@ class TsysMeasure:
                         self.nfeeds, self.nbands, self.nfreqs, self.ntod)
         self.Tsys[:, :, :, self.calib_indices_tod[0,0]:self.calib_indices_tod[0,1]] = np.nan
         self.Tsys[:, :, :, self.calib_indices_tod[1,0]:self.calib_indices_tod[1,1]] = np.nan
+        if self.verbose:
+            print("Finished Tsys solve in %.2f s" % (time.time()-t0))
         return self.Tsys
 
 
@@ -112,10 +136,11 @@ if __name__ == "__main__":
     Tsys.solve()
 
     tsys = Tsys.Tsys_of_t(Tsys.tod_times, Tsys.tod)
-    # np.save("tsys_"+obsid+".npy", Tsys.Tsys)
-    # np.save("thot_"+obsid+".npy", Tsys.Thot)
-    # np.save("thot_cont_"+obsid+".npy", Tsys.Thot_cont)
-    # np.save("phot_t_"+obsid+".npy", Tsys.Phot_t)
-    # np.save("phot_"+obsid+".npy", Tsys.Phot)
-    # np.save("pcold_"+obsid+".npy", Tsys.Pcold)
-    # np.save("points_used_"+obsid+".npy", Tsys.points_used)
+    np.save("tsys_"+obsid+".npy", Tsys.Tsys)
+    np.save("thot_"+obsid+".npy", Tsys.Thot)
+    np.save("thot_cont_"+obsid+".npy", Tsys.Thot_cont)
+    np.save("phot_t_"+obsid+".npy", Tsys.Phot_t)
+    np.save("phot_"+obsid+".npy", Tsys.Phot)
+    np.save("pcold_"+obsid+".npy", Tsys.tod)
+    np.save("points_used_Thot"+obsid+".npy", Tsys.points_used_Thot)
+    np.save("points_used_Phot"+obsid+".npy", Tsys.points_used_Phot)
