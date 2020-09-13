@@ -43,7 +43,7 @@ class TsysMeasure:
         self.points_used_Phot = np.zeros((self.nfeeds, 2))
         self.points_used_Thot = np.zeros((self.nfeeds, 2))
         self.calib_indices_tod = np.zeros((2, 2), dtype=np.int)  # Start and end indices, in tod_time format, for "calibration phase".
-        #self.tsys_calc_times = np.zeros((self.nfeeds, 2, 2))
+        self.successful = np.zeros((self.nfeeds, 2), dtype=bool)
 
         self.TCMB = 2.725
         if self.verbose:
@@ -99,6 +99,7 @@ class TsysMeasure:
                             self.Phot_t[feed_idx, i] = (tod_timesi[min_idxi] + tod_timesi[max_idxi])/2.0
                             self.points_used_Phot[feed_idx, i] = max_idxi - min_idxi
                             self.points_used_Thot[feed_idx, i] = max_idx_vane - min_idx_vane
+                            self.successful[feed_idx, i] = True
         if self.verbose:
             print("Finished Phot solve in %.2f s" % (time.time()-t0))
 
@@ -107,7 +108,7 @@ class TsysMeasure:
             print("Starting Tsys solve")
             t0 = time.time()      
         self.Tsys = np.zeros((self.nfeeds, self.nbands, self.nfreqs, self.ntod), dtype=np.float32)
-        tsyslib = ctypes.cdll.LoadLibrary("/mn/stornext/d16/cmbco/comap/jonas/comap_general/sim/tsyslib.so.1")
+        tsyslib = ctypes.cdll.LoadLibrary("/mn/stornext/d16/cmbco/comap/jonas/comap_general/tsys/tsyslib.so.1")
         float64_array1 = np.ctypeslib.ndpointer(dtype=ctypes.c_double, ndim=1, flags="contiguous")
         float32_array4 = np.ctypeslib.ndpointer(dtype=ctypes.c_float, ndim=4, flags="contiguous")
         float64_array2 = np.ctypeslib.ndpointer(dtype=ctypes.c_double, ndim=2, flags="contiguous")
