@@ -56,6 +56,7 @@ def func(fileidx):
         points_used_Phot = np.zeros((19, 2))
         calib_times = np.zeros((19,2))
         tsys_timeavg = np.zeros((19,4,1024))
+        successful = np.zeros((19,2), dtype=bool)
         for i in range(len(feeds)):
             feed = feeds[i]
             if feed < 20:
@@ -65,12 +66,14 @@ def func(fileidx):
                 points_used_Phot[feed-1] = Tsys.points_used_Phot[i]
                 calib_times[feed-1] = Tsys.Phot_t[i]
                 tsys_timeavg[feed-1] = _tsys_timeavg[i]
-        
+                successful[feed-1] = Tsys.successful[i]
+
         Thot = Thot.reshape((2,19))
         Phot = Phot.reshape((2,19,4,1024))
         points_used_Thot = points_used_Thot.reshape((2,19))
         points_used_Phot = points_used_Phot.reshape((2,19))
         calib_times = calib_times.reshape((2,19))
+        successful = successful.reshape((2,19))
 
         print("Finished nr %d in %.2f m" % (fileidx, (time.time()-t0)/60.0))
 
@@ -83,8 +86,9 @@ def func(fileidx):
         calib_times = np.full((2, 19), np.nan)
         tsys_timeavg = np.full((19,4,1024), np.nan)
         freqs = np.full((1024,4), np.nan)
+        successful = np.zeros((2,19), dtype=bool)
         
-    return Thot, Phot, points_used_Thot, points_used_Phot, calib_times, obsid, freqs, tsys_timeavg
+    return Thot, Phot, points_used_Thot, points_used_Phot, calib_times, obsid, freqs, tsys_timeavg, successful
 
 
 
@@ -94,12 +98,13 @@ with Pool(processes=12) as pool:
 
 fout = h5py.File("test.h5", "w")
 for result in results:
-    Thot, Phot, points_used_Thot, points_used_Phot, calib_times, obsid, freqs, tsys_timeavg = result
+    Thot, Phot, points_used_Thot, points_used_Phot, calib_times, obsid, freqs, tsys_timeavg, successful = result
     datagroup = "obsid/" + obsid + "/"
     fout.create_dataset(datagroup + "Thot", data=Thot)
     fout.create_dataset(datagroup + "Phot", data=Phot)
     fout.create_dataset(datagroup + "points_used_Thot", data=points_used_Thot)
     fout.create_dataset(datagroup + "points_used_Phot", data=points_used_Phot)
     fout.create_dataset(datagroup + "Tsys_timeavg", data=tsys_timeavg)
+    fout.create_dataset(datagroup + "successful", data=successful)
     fout.create_dataset(datagroup + "frequencies", data=freqs)
 fout.close()
