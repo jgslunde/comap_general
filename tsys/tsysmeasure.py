@@ -36,8 +36,10 @@ class TsysMeasure:
 
         self.Thot = np.zeros((self.nfeeds, 2), dtype=np.float64)
         self.Phot = np.zeros((self.nfeeds, self.nbands, self.nfreqs, 2), dtype=np.float64)  # P_hot measurements from beginning and end of obsid.
+        self.Phot_unc = np.zeros((self.nfeeds, self.nbands, self.nfreqs, 2), dtype=np.float64)
         self.Phot_t = np.zeros((self.nfeeds, 2), dtype=np.float64)
         self.Phot[:] = np.nan  # All failed calcuations of Tsys should result in a nan, not a zero.
+        self.Phot_unc[:] = np.nan
         self.Phot_t[:] = np.nan
 
         self.points_used_Phot = np.zeros((self.nfeeds, 2))
@@ -96,6 +98,7 @@ class TsysMeasure:
                         if max_idxi > min_idxi and max_idx_vane > min_idx_vane:
                             self.Thot[feed_idx, i] = np.nanmean(self.Thot_cont[min_idx_vane:max_idx_vane])
                             self.Phot[feed_idx, :, :, i] = np.nanmean(todi[:,:,min_idxi:max_idxi], axis=(2))
+                            self.Phot_unc[feed_idx, :, :, i] = np.nanstd(todi[:,:,min_idxi:max_idxi], axis=(2))/np.sqrt(max_idxi-min_idxi)
                             self.Phot_t[feed_idx, i] = (tod_timesi[min_idxi] + tod_timesi[max_idxi])/2.0
                             self.points_used_Phot[feed_idx, i] = max_idxi - min_idxi
                             self.points_used_Thot[feed_idx, i] = max_idx_vane - min_idx_vane
