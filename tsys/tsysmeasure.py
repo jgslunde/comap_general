@@ -83,9 +83,9 @@ class TsysMeasure:
         vane_time1, vane_time2, vane_active1, vane_active2, tod, tod_times = self.vane_time1, self.vane_time2, self.vane_active1, self.vane_active2, self.tod, self.tod_times
         nfeeds, nbands, nfreqs, ntod = self.nfeeds, self.nbands, self.nfreqs, self.ntod
         for i, vane_timei, vane_activei in [[0, vane_time1, vane_active1], [1, vane_time2, vane_active2]]:
-            if np.sum(vane_activei) > 5:
+            if np.sum(vane_activei) > 5: # Require at least 5 timestamps of active vane.
                 vane_timei = vane_timei[vane_activei]
-                tod_start_idx = np.argmin(np.abs(vane_timei[0]-tod_times))
+                tod_start_idx = np.argmin(np.abs(vane_timei[0]-tod_times))  # Find closest TOD timestamps to the vane start and stop timestamps.
                 tod_stop_idx = np.argmin(np.abs(vane_timei[-1]-tod_times))
                 self.calib_indices_tod[i, :] = tod_start_idx, tod_stop_idx
                 for feed_idx in range(nfeeds):
@@ -93,11 +93,11 @@ class TsysMeasure:
                     tod_timesi = tod_times[tod_start_idx:tod_stop_idx]
                     tod_freq_mean = np.nanmean(todi, axis=(0,1))
                     if np.sum(tod_freq_mean > 0) > 10:  # Check number of valid points. Also catches NaNs.
-                        threshold_idxs = np.argwhere(tod_freq_mean > 0.95*np.max(tod_freq_mean))  # Points where tod is at least 95% of max. (We assume this is only true during Tsys measurement).
+                        threshold_idxs = np.argwhere(tod_freq_mean > 0.95*np.nanmax(tod_freq_mean))  # Points where tod is at least 95% of max. (We assume this is only true during Tsys measurement).
                         if threshold_idxs.shape[0] > 0:  # Don't see this could possible be false, but it happened, so, here we are.
                             min_idxi = threshold_idxs[0][0] + 40  # Take the first and last of points fulfilling the above condition, assume they represent start and end of 
                             max_idxi = threshold_idxs[-1][0] - 40  # Tsys measurement, and add a 40-idx safety margin (40*20ms = 0.8 seconds.)
-                            min_idx_vane = np.argmin(np.abs(self.vane_times - tod_timesi[min_idxi]))
+                            min_idx_vane = np.argmin(np.abs(self.vane_times - tod_timesi[min_idxi]))  # Find closest vane timestamps to the selected TOD timestamps.
                             max_idx_vane = np.argmin(np.abs(self.vane_times - tod_timesi[max_idxi]))
                             if max_idxi > min_idxi and max_idx_vane > min_idx_vane:
                                 self.Thot[feed_idx, i] = np.nanmean(self.Thot_cont[min_idx_vane:max_idx_vane])
