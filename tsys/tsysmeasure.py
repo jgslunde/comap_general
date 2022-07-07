@@ -43,6 +43,7 @@ class TsysMeasure:
         self.Phot_unc[:] = np.nan
         self.Phot_t[:] = np.nan
 
+        self.calib_times = np.zeros((self.nfeeds, 2))
         self.points_used_Phot = np.zeros((self.nfeeds, 2))
         self.points_used_Thot = np.zeros((self.nfeeds, 2))
         self.calib_indices_tod = np.zeros((2, 2), dtype=int)  # Start and end indices, in tod_time format, for "calibration phase".
@@ -133,6 +134,7 @@ class TsysMeasure:
                                     self.Phot_t[feed_idx, i] = (tod_timesi[min_idxi] + tod_timesi[max_idxi])/2.0
                                     self.points_used_Phot[feed_idx, i] = max_idxi - min_idxi
                                     self.Phot_startstop_times[feed_idx, i] = (tod_timesi[min_idxi], tod_timesi[max_idxi])
+                                    self.calib_times[feed_idx, i] = (tod_timesi[max_idxi] - tod_timesi[min_idxi])/2
                                     if np.isfinite(self.Thot[feed_idx, i]):
                                         if np.isfinite(self.Phot[feed_idx, :, :, i]).all():
                                             self.successful[feed_idx, i] = 1
